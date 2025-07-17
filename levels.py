@@ -18,6 +18,8 @@ LEVELS = {
     1: GameLevel(1, 3, []),  # 简单关卡
     2: GameLevel(2, 5, []),  # 中等关卡  
     3: GameLevel(3, 8, []),  # 困难关卡
+    4: GameLevel(4, 10, []), # 专家关卡
+    5: GameLevel(5, 12, []), # 大师关卡
 }
 
 print("关卡系统模块已加载")
