@@ -24,6 +24,8 @@ PURPLE = (128, 0, 128)
 ORANGE = (255, 165, 0)
 GRAY = (128, 128, 128)
 DARK_GRAY = (64, 64, 64)
+GOLD = (255, 215, 0)
+LIGHT_BLUE = (173, 216, 230)
 
 # 方向常量
 UP = (0, -1)
@@ -196,6 +198,8 @@ class Snake:
 class Food:
     def __init__(self):
         self.position = self.generate_position()
+        self.is_special = False
+        self.special_timer = 0
         
     def generate_position(self, snake_body=None, obstacles=None):
         """生成食物位置，避免与蛇身和障碍物重叠"""
@@ -211,17 +215,42 @@ class Food:
             # 确保食物不在蛇身上和障碍物上
             if position not in snake_body and not obstacles.is_obstacle(position):
                 return position
+    
+    def make_special(self):
+        """将食物设为特殊食物"""
+        self.is_special = True
+        self.special_timer = 300  # 5秒钟特殊食物(60fps * 5)
+    
+    def update(self):
+        """更新特殊食物状态"""
+        if self.is_special:
+            self.special_timer -= 1
+            if self.special_timer <= 0:
+                self.is_special = False
                 
     def draw(self, screen):
         rect = pygame.Rect(self.position[0] * GRID_SIZE, 
                           self.position[1] * GRID_SIZE, 
                           GRID_SIZE, GRID_SIZE)
-        pygame.draw.rect(screen, RED, rect)
         
-        # 给食物添加一些装饰
-        center_x = self.position[0] * GRID_SIZE + GRID_SIZE // 2
-        center_y = self.position[1] * GRID_SIZE + GRID_SIZE // 2
-        pygame.draw.circle(screen, (255, 100, 100), (center_x, center_y), 3)
+        if self.is_special:
+            # 特殊食物：金色闪烁效果
+            color = GOLD if (self.special_timer // 10) % 2 == 0 else YELLOW
+            pygame.draw.rect(screen, color, rect)
+            
+            # 特殊食物装饰
+            center_x = self.position[0] * GRID_SIZE + GRID_SIZE // 2
+            center_y = self.position[1] * GRID_SIZE + GRID_SIZE // 2
+            pygame.draw.circle(screen, WHITE, (center_x, center_y), 4)
+            pygame.draw.circle(screen, color, (center_x, center_y), 2)
+        else:
+            # 普通食物
+            pygame.draw.rect(screen, RED, rect)
+            
+            # 给食物添加一些装饰
+            center_x = self.position[0] * GRID_SIZE + GRID_SIZE // 2
+            center_y = self.position[1] * GRID_SIZE + GRID_SIZE // 2
+            pygame.draw.circle(screen, (255, 100, 100), (center_x, center_y), 3)
 
 class Game:
     def __init__(self):
@@ -302,10 +331,18 @@ class Game:
                 self.game_over = True
                 return
                 
+            # 更新食物状态
+            self.food.update()
+                
             # 检查是否吃到食物
             if self.snake.body[0] == self.food.position:
                 self.snake.grow_snake()
-                self.score += 10
+                
+                # 根据食物类型给分
+                if self.food.is_special:
+                    self.score += 25  # 特殊食物更多分数
+                else:
+                    self.score += 10  # 普通食物
                 
                 # 检查是否升级
                 new_level = self.get_current_level()
@@ -316,6 +353,11 @@ class Game:
                 
                 # 生成新食物，确保不在蛇身上和障碍物上
                 self.food.position = self.food.generate_position(self.snake.body, self.obstacles)
+                self.food.is_special = False
+                
+                # 10%概率生成特殊食物
+                if random.random() < 0.1:
+                    self.food.make_special()
                     
     def draw(self):
         self.screen.fill(BLACK)
@@ -365,10 +407,18 @@ class Game:
         # 绘制操作提示（仅在游戏进行中显示）
         if not self.game_over:
             help_text = self.small_font.render("方向键控制移动，ESC退出", True, WHITE)
-            self.screen.blit(help_text, (10, WINDOW_HEIGHT - 50))
+            self.screen.blit(help_text, (10, WINDOW_HEIGHT - 70))
             
             help_text2 = self.small_font.render("灰色方块为障碍物，小心避开！", True, WHITE)
-            self.screen.blit(help_text2, (10, WINDOW_HEIGHT - 30))
+            self.screen.blit(help_text2, (10, WINDOW_HEIGHT - 50))
+            
+            # 特殊食物提示
+            if self.food.is_special:
+                special_text = self.small_font.render("✨ 金色食物出现！价值25分！", True, GOLD)
+                self.screen.blit(special_text, (10, WINDOW_HEIGHT - 30))
+            else:
+                normal_text = self.small_font.render("红色食物：10分，金色食物：25分", True, LIGHT_BLUE)
+                self.screen.blit(normal_text, (10, WINDOW_HEIGHT - 30))
             
         # 绘制等级进度条
         if next_level_score:
